@@ -1,32 +1,65 @@
-# Eclipse stuff
-/.classpath
-/.project
-/.settings
+# Compiled source #
+###################
+bin
+out
+target
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so
 
-# netbeans
-/nbproject
+# Git #
+#######
+.git
 
-# we use maven!
-/build.xml
+# Packages #
+############
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
 
-# maven
-/target
+# Logs and databases #
+######################
+*.log
+*.sql
+*.sqlite
 
-# vim
-.*.sw[a-p]
-*~
+# OS generated files #
+######################
+.DS_Store
+ehthumbs.db
+Icon?
+Thumbs.db
 
-# various other potential build files
-/build
-/bin
-/dist
-/manifest.mf
+# Build files #
+#################
+MANIFEST.MF
+dependency-reduced-pom.xml
 
-# Mac filesystem dust
-/.DS_Store
-
-# intellij
+# Project files #
+#####################
+.classpath
+.externalToolBuilders
+.idea
+.project
+.settings
+build
+dist
+nbproject
+atlassian-ide-plugin.xml
+build.xml
+nb-configuration.xml
 *.iml
 *.ipr
 *.iws
 
+# Misc files #
+##############
+*.bak

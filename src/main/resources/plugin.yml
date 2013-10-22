@@ -1,14 +1,14 @@
-name: RedstoneClockDetector
+name: ${project.name}
 main: me.hwei.bukkit.redstoneClockDetector.RCDPlugin
-version: 0.2.6
+version: ${project.version}
 
 description: Detect redstone clock and teleport to it.
-author: HWei
+author: HWei, daboross
 commands:
   rcd:
     aliases: redstoneclockdetector
-    description: Redstone Clock Detector.
-    usage: Type /rcd ? to get more help.
+    description: Redstone clock detector base command.
+    usage: /<command> ?
 permissions:
   redstoneclockdetector.*:
     description: Gives access to use this plugin.
