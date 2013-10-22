@@ -4,27 +4,22 @@ import org.bukkit.command.CommandSender;
 
 import net.daboross.bukkitdev.redstoneclockdetector.RCDPlugin;
 import net.daboross.bukkitdev.redstoneclockdetector.utils.AbstractCommand;
-import net.daboross.bukkitdev.redstoneclockdetector.utils.IOutput;
-import net.daboross.bukkitdev.redstoneclockdetector.utils.OutputManager;
-import net.daboross.bukkitdev.redstoneclockdetector.utils.UsageException;
 
 public class StopCommand extends AbstractCommand {
 
-    public StopCommand(String usage, String perm, AbstractCommand[] children, RCDPlugin plugin)
-            throws Exception {
-        super(usage, perm, children);
-        this.plugin = plugin;
-    }
     protected RCDPlugin plugin;
 
+    public StopCommand(AbstractCommand[] children, RCDPlugin plugin) {
+        super("stop  Stop scan.", "redstoneclockdetector.stop", children);
+        this.plugin = plugin;
+    }
+
     @Override
-    protected boolean execute(CommandSender sender, MatchResult[] data)
-            throws UsageException {
-        IOutput toSender = OutputManager.GetInstance().toSender(sender);
+    protected boolean execute(CommandSender sender, MatchResult[] data) {
         if (this.plugin.stop()) {
-            toSender.output("Successfully stoped.");
+            sender.sendMessage("Successfully stopped.");
         } else {
-            toSender.output("Already stoped.");
+            sender.sendMessage("Already stopped.");
         }
         return true;
     }

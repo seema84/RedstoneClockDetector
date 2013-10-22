@@ -2,18 +2,15 @@ package net.daboross.bukkitdev.redstoneclockdetector.commands;
 
 import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
-
 import net.daboross.bukkitdev.redstoneclockdetector.RCDPlugin;
 import net.daboross.bukkitdev.redstoneclockdetector.utils.AbstractCommand;
-import net.daboross.bukkitdev.redstoneclockdetector.utils.IOutput;
-import net.daboross.bukkitdev.redstoneclockdetector.utils.OutputManager;
+import net.daboross.bukkitdev.redstoneclockdetector.utils.PermissionsException;
 import net.daboross.bukkitdev.redstoneclockdetector.utils.UsageException;
 
 public class StartCommand extends AbstractCommand {
 
-    public StartCommand(String usage, String perm, AbstractCommand[] children, RCDPlugin plugin, AbstractCommand listCommand)
-            throws Exception {
-        super(usage, perm, children);
+    public StartCommand(AbstractCommand[] children, RCDPlugin plugin, AbstractCommand listCommand) {
+        super("<sec>  Start scan for <sec> seconds.", "redstoneclockdetector.start", children);
         this.plugin = plugin;
         this.listCommand = listCommand;
     }
@@ -21,51 +18,46 @@ public class StartCommand extends AbstractCommand {
     protected AbstractCommand listCommand;
 
     @Override
-    protected boolean execute(CommandSender sender, MatchResult[] data)
-            throws UsageException {
+    protected boolean execute(CommandSender sender, MatchResult[] data) throws UsageException {
         Integer seconds = data[0].getInteger();
         if (seconds == null) {
             return false;
         }
         if (seconds <= 0) {
-            throw new UsageException(this.coloredUsage, "seconds number should be a positive integer.");
+            throw new UsageException(this.coloredUsage, "Seconds number should be a positive integer.");
         }
         CommandSender user = this.plugin.getUser();
-        OutputManager outputManager = OutputManager.GetInstance();
-        IOutput toSender = outputManager.toSender(sender);
         if (user != null) {
-            toSender.output(String.format(
-                    ChatColor.GREEN.toString() + "%s " + ChatColor.WHITE
-                    + "has already started a scan.", user.getName()));
+            sender.sendMessage(ChatColor.GREEN.toString() + user.getName() + ChatColor.WHITE + " has already started a scan.");
             return true;
         }
-        IOutput toSenderPrefix = outputManager.prefix(outputManager.toSender(sender));
-        this.plugin.start(sender, seconds, new ProgressReporter(toSenderPrefix, new FinishCallback(this.listCommand, sender)));
-        toSender.output(String.format("Start a scan of %d seconds.", seconds));
+        this.plugin.start(sender, seconds, new ProgressReporter(sender, new FinishCallback(this.listCommand, sender)));
+        sender.sendMessage("Starting scan of " + seconds + " seconds.");
         return true;
     }
 
     protected class ProgressReporter implements RCDPlugin.IProgressReporter {
 
-        public ProgressReporter(IOutput toSender, FinishCallback finishCallback) {
-            this.toSender = toSender;
+        protected CommandSender sender;
+        protected FinishCallback finishCallback;
+
+        public ProgressReporter(CommandSender sender, FinishCallback finishCallback) {
+            this.sender = sender;
             this.finishCallback = finishCallback;
         }
 
         @Override
-        public void onProgress(int secondsRemain) {
-            if (secondsRemain <= 0) {
-                this.finishCallback.onFinish();
-            } else if (secondsRemain <= 5) {
-                this.toSender.output(String.format("Remain %d seconds.", secondsRemain));
-            } else if (secondsRemain <= 60 && secondsRemain % 10 == 0) {
-                this.toSender.output(String.format("Remain %d seconds.", secondsRemain));
-            } else if (secondsRemain % 60 == 0) {
-                this.toSender.output(String.format("Remain %d minutes.", secondsRemain / 60));
+        public void onProgress(int secondsRemaining) {
+            if (secondsRemaining <= 0) {
+                finishCallback.onFinish();
+            } else if (secondsRemaining <= 5) {
+                sender.sendMessage("[RCD]" + secondsRemaining + " seconds remaining.");
+            } else if (secondsRemaining <= 60 && secondsRemaining % 10 == 0) {
+                sender.sendMessage("[RCD]" + secondsRemaining + " seconds remaining.");
+            } else if (secondsRemaining % 60 == 0) {
+                sender.sendMessage("[RCD]" + (secondsRemaining / 60) + " minutes remaining.");
             }
         }
-        protected IOutput toSender;
-        protected FinishCallback finishCallback;
     }
 
     protected class FinishCallback {
@@ -78,7 +70,8 @@ public class StartCommand extends AbstractCommand {
         public void onFinish() {
             try {
                 this.listCommand.execute(sender, new String[]{"list"});
-            } catch (Exception e) {
+            } catch (PermissionsException unused) {
+            } catch (UsageException unused) {
             }
         }
         protected AbstractCommand listCommand;

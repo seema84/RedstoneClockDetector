@@ -5,9 +5,10 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.TreeMap;
-
+import java.util.logging.Level;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 import net.daboross.bukkitdev.redstoneclockdetector.commands.BreakCommand;
 import net.daboross.bukkitdev.redstoneclockdetector.commands.ListCommand;
 import net.daboross.bukkitdev.redstoneclockdetector.commands.StartCommand;
@@ -15,18 +16,14 @@ import net.daboross.bukkitdev.redstoneclockdetector.commands.StatusCommand;
 import net.daboross.bukkitdev.redstoneclockdetector.commands.StopCommand;
 import net.daboross.bukkitdev.redstoneclockdetector.commands.TeleportCommand;
 import net.daboross.bukkitdev.redstoneclockdetector.utils.AbstractCommand;
-import net.daboross.bukkitdev.redstoneclockdetector.utils.IOutput;
-import net.daboross.bukkitdev.redstoneclockdetector.utils.OutputManager;
 import net.daboross.bukkitdev.redstoneclockdetector.utils.PermissionsException;
 import net.daboross.bukkitdev.redstoneclockdetector.utils.UsageException;
-
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockPhysicsEvent;
@@ -34,94 +31,56 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 public class RCDPlugin extends JavaPlugin implements CommandExecutor, Listener {
 
+    protected HashMap<Location, Integer> redstoneActivityTable = null;
+    protected List<Map.Entry<Location, Integer>> redstoneActivityList = null;
+    protected Worker worker = null;
+    protected CommandSender userWhoIssuedLastScan = null;
+    protected int taskId = Integer.MIN_VALUE;
+    protected AbstractCommand topCommand = null;
+
     @Override
     public void onDisable() {
         this.stop();
         this.redstoneActivityTable = null;
         this.redstoneActivityList = null;
-        this.toConsole.output("Disabled.");
     }
 
     @Override
     public void onEnable() {
-        IOutput toConsole = new IOutput() {
-            @Override
-            public void output(String message) {
-                getServer().getConsoleSender().sendMessage(message);
-            }
-        };
-        IOutput toAll = new IOutput() {
-            @Override
-            public void output(String message) {
-                getServer().broadcastMessage(message);
-            }
-        };
-        OutputManager.IPlayerGetter playerGetter = new OutputManager.IPlayerGetter() {
-            @Override
-            public Player get(String name) {
-                return getServer().getPlayer(name);
-            }
-        };
-        String pluginName = this.getDescription().getName();
-        OutputManager.Setup(
-                "[" + ChatColor.YELLOW + pluginName + ChatColor.WHITE + "] ",
-                toConsole, toAll, playerGetter);
-        this.toConsole = OutputManager.GetInstance().prefix(toConsole);
-        this.toConsole.output("Enabled.");
-
         this.redstoneActivityTable = new HashMap<Location, Integer>();
-        this.redstoneActivityList = new ArrayList<Entry<Location, Integer>>();
+        this.redstoneActivityList = new ArrayList<Map.Entry<Location, Integer>>();
         this.stop();
-
-        this.setupCommands();
-
+        if (!setupCommands()) {
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
         this.getServer().getPluginManager().registerEvents(this, this);
     }
 
     protected boolean setupCommands() {
         try {
-            ListCommand listCommand = new ListCommand(
-                    "list [page]  List locations of redstone activities.",
-                    "redstoneclockdetector.list",
-                    null, this);
+            ListCommand listCommand = new ListCommand(null, this);
             AbstractCommand[] childCommands = new AbstractCommand[]{
-                new StartCommand(
-                "<sec>  Start scan for <sec> seconds.",
-                "redstoneclockdetector.start",
-                null, this, listCommand),
-                new StopCommand(
-                "stop  Stop scan.",
-                "redstoneclockdetector.stop",
-                null, this),
+                new StartCommand(null, this, listCommand),
+                new StopCommand(null, this),
                 listCommand,
-                new TeleportCommand(
-                "tp [player] [num]  Teleport player [player] to place of number [num] in list.",
-                "redstoneclockdetector.tp",
-                null, this),
-                new BreakCommand(
-                "break <num>  Break the block at place of number <num> in list.",
-                "redstoneclockdetector.break",
-                null, this),};
-
-            this.topCommand = new StatusCommand(
-                    "  Status of plugin.",
-                    "redstoneclockdetector",
-                    childCommands, this);
-
-        } catch (Exception e) {
-            this.toConsole.output("Can not setup commands!");
-            e.printStackTrace();
+                new TeleportCommand(null, this),
+                new BreakCommand(null, this)};
+            this.topCommand = new StatusCommand("  Status of plugin.",
+                    "redstoneclockdetector", childCommands, this);
+        } catch (RuntimeException ex) {
+            getLogger().log(Level.SEVERE, "Failed to setup commands", ex);
             return false;
         }
         return true;
     }
 
-    public List<Entry<Location, Integer>> getRedstoneActivityList() {
+    public List<Map.Entry<Location, Integer>> getRedstoneActivityList() {
         return this.redstoneActivityList;
     }
 
     public CommandSender getUser() {
-        return this.sender;
+        return this.userWhoIssuedLastScan;
     }
 
     public int getSecondsRemain() {
@@ -131,46 +90,11 @@ public class RCDPlugin extends JavaPlugin implements CommandExecutor, Listener {
         return this.worker.getSecondsRemain();
     }
 
-    public interface IProgressReporter {
-
-        public void onProgress(int secondsRemain);
-    }
-
-    protected class Worker implements Runnable {
-
-        public Worker(int seconds, IProgressReporter progressReporter) {
-            this.progressReporter = progressReporter;
-            this.secondsRemain = seconds;
-        }
-
-        @Override
-        public void run() {
-
-            if (this.secondsRemain <= 0) {
-                if (RCDPlugin.this.stop() && this.progressReporter != null) {
-                    this.progressReporter.onProgress(secondsRemain);
-                }
-            } else {
-                if (this.progressReporter != null) {
-                    this.progressReporter.onProgress(secondsRemain);
-                }
-                this.secondsRemain--;
-            }
-
-        }
-
-        public int getSecondsRemain() {
-            return this.secondsRemain;
-        }
-        protected IProgressReporter progressReporter;
-        protected int secondsRemain;
-    }
-
     public boolean start(CommandSender sender, int seconds, IProgressReporter progressReporter) {
         if (this.taskId != Integer.MIN_VALUE) {
             return false;
         }
-        this.sender = sender;
+        this.userWhoIssuedLastScan = sender;
         this.worker = new Worker(seconds, progressReporter);
         this.taskId = this.getServer().getScheduler().scheduleSyncRepeatingTask(this, this.worker, 0L, 20L);
         return true;
@@ -180,7 +104,7 @@ public class RCDPlugin extends JavaPlugin implements CommandExecutor, Listener {
         if (this.taskId != Integer.MIN_VALUE) {
             this.getServer().getScheduler().cancelTask(this.taskId);
             this.taskId = Integer.MIN_VALUE;
-            this.sender = null;
+            this.userWhoIssuedLastScan = null;
             this.worker = null;
             this.sortList();
             this.redstoneActivityTable.clear();
@@ -191,24 +115,6 @@ public class RCDPlugin extends JavaPlugin implements CommandExecutor, Listener {
     }
 
     protected void sortList() {
-        class ValueComparator implements Comparator<Location> {
-
-            Map<Location, Integer> base;
-
-            public ValueComparator(Map<Location, Integer> base) {
-                this.base = base;
-            }
-
-            public int compare(Location a, Location b) {
-                if (base.get(a) < base.get(b)) {
-                    return 1;
-                } else if (base.get(a) == base.get(b)) {
-                    return 0;
-                } else {
-                    return -1;
-                }
-            }
-        }
         ValueComparator bvc = new ValueComparator(this.redstoneActivityTable);
         TreeMap<Location, Integer> sortedMap = new TreeMap<Location, Integer>(bvc);
         sortedMap.putAll(this.redstoneActivityTable);
@@ -239,23 +145,61 @@ public class RCDPlugin extends JavaPlugin implements CommandExecutor, Listener {
             if (!topCommand.execute(sender, args)) {
                 topCommand.showUsage(sender, command.getName());
             }
-        } catch (PermissionsException e) {
-            sender.sendMessage(String.format(ChatColor.RED.toString() + "You do not have permission of %s", e.getPerms()));
-        } catch (UsageException e) {
-            sender.sendMessage("Usage: " + ChatColor.YELLOW + command.getName() + " " + e.getUsage());
-            sender.sendMessage(String.format(ChatColor.RED.toString() + e.getMessage()));
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (PermissionsException ex) {
+            sender.sendMessage(ChatColor.RED + "You do not have permission to use this command.");
+        } catch (UsageException ex) {
+            sender.sendMessage("Usage: " + ChatColor.YELLOW + command.getName() + " " + ex.getUsage());
+            sender.sendMessage(String.format(ChatColor.RED.toString() + ex.getMessage()));
+        } catch (RuntimeException ex) {
+            sender.sendMessage("There was an error executing the command. Please check the console");
+            getLogger().log(Level.SEVERE, "Caught error while executing command " + command + " on sender " + sender, ex);
         }
         return true;
     }
 
-    protected HashMap<Location, Integer> redstoneActivityTable = null;
-    protected List<Entry<Location, Integer>> redstoneActivityList = null;
-    protected Worker worker = null;
-    protected CommandSender sender = null;
-    protected int taskId = Integer.MIN_VALUE;
-    protected String prefex = "";
-    protected IOutput toConsole = null;
-    protected AbstractCommand topCommand = null;
+    public interface IProgressReporter {
+
+        public void onProgress(int secondsRemain);
+    }
+
+    @AllArgsConstructor
+    public class Worker implements Runnable {
+
+        @Getter
+        protected int secondsRemain;
+        protected IProgressReporter progressReporter;
+
+        @Override
+        public void run() {
+            if (this.secondsRemain <= 0) {
+                if (RCDPlugin.this.stop() && this.progressReporter != null) {
+                    this.progressReporter.onProgress(secondsRemain);
+                }
+            } else {
+                if (this.progressReporter != null) {
+                    this.progressReporter.onProgress(secondsRemain);
+                }
+                this.secondsRemain--;
+            }
+
+        }
+
+    }
+
+    @AllArgsConstructor
+    public class ValueComparator implements Comparator<Location> {
+
+        private final Map<Location, Integer> base;
+
+        @Override
+        public int compare(Location a, Location b) {
+            if (base.get(a) < base.get(b)) {
+                return 1;
+            } else if (base.get(a) == base.get(b)) {
+                return 0;
+            } else {
+                return -1;
+            }
+        }
+    }
 }

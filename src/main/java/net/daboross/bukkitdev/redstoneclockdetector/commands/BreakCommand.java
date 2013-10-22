@@ -1,8 +1,10 @@
 package net.daboross.bukkitdev.redstoneclockdetector.commands;
 
 import java.util.List;
-import java.util.Map.Entry;
-
+import java.util.Map;
+import net.daboross.bukkitdev.redstoneclockdetector.RCDPlugin;
+import net.daboross.bukkitdev.redstoneclockdetector.utils.AbstractCommand;
+import net.daboross.bukkitdev.redstoneclockdetector.utils.UsageException;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -10,24 +12,17 @@ import org.bukkit.block.Block;
 import org.bukkit.block.Sign;
 import org.bukkit.command.CommandSender;
 
-import net.daboross.bukkitdev.redstoneclockdetector.RCDPlugin;
-import net.daboross.bukkitdev.redstoneclockdetector.utils.AbstractCommand;
-import net.daboross.bukkitdev.redstoneclockdetector.utils.IOutput;
-import net.daboross.bukkitdev.redstoneclockdetector.utils.OutputManager;
-import net.daboross.bukkitdev.redstoneclockdetector.utils.UsageException;
-
 public class BreakCommand extends AbstractCommand {
 
-    public BreakCommand(String usage, String perm, AbstractCommand[] children, RCDPlugin plugin)
-            throws Exception {
-        super(usage, perm, children);
+    public BreakCommand(AbstractCommand[] children, RCDPlugin plugin) {
+        super("break <num>  Break the block at place of number <num> in list.",
+                "redstoneclockdetector.break", children);
         this.plugin = plugin;
     }
     protected RCDPlugin plugin;
 
     @Override
-    protected boolean execute(CommandSender sender, MatchResult[] data)
-            throws UsageException {
+    protected boolean execute(CommandSender sender, MatchResult[] data) throws UsageException {
         int tpNum = 0;
         if (data.length != 1) {
             throw new UsageException(this.coloredUsage, "Must specify location num.");
@@ -37,26 +32,17 @@ public class BreakCommand extends AbstractCommand {
             throw new UsageException(this.coloredUsage, "Location num must be a positive integer.");
         }
 
-        OutputManager outputManager = OutputManager.GetInstance();
-        IOutput toSender = outputManager.toSender(sender);
-
-        List<Entry<Location, Integer>> actList = this.plugin.getRedstoneActivityList();
+        List<Map.Entry<Location, Integer>> actList = this.plugin.getRedstoneActivityList();
         if (tpNum >= actList.size()) {
-            toSender.output(String.format(
-                    "Location num "
-                    + ChatColor.YELLOW + "%d " + ChatColor.WHITE
-                    + "dose not exist.", tpNum + 1));
+            sender.sendMessage("Location num " + ChatColor.YELLOW + (tpNum + 1) + " " + ChatColor.WHITE + "does not exist.");
         } else {
             Location loc = actList.get(tpNum).getKey();
             Block block = loc.getBlock();
-            String blockName = block.getType().toString();
+            String typeString = block.getType().toString();
             if (!block.breakNaturally()) {
-                toSender.output(String.format(
-                        "Can not break %s block at "
-                        + ChatColor.GREEN + "(%d, %d, %d) %s "
-                        + ChatColor.WHITE + ".",
-                        blockName,
-                        loc.getBlockX(), loc.getBlockY(), loc.getBlockZ(),
+                sender.sendMessage(String.format("Cannot break %s block at " + ChatColor.GREEN + "(%d, %d, %d) %s" + ChatColor.WHITE + ".",
+                        typeString,
+                        block.getX(), block.getY(), block.getZ(),
                         loc.getWorld().getName()));
                 return true;
             }
@@ -64,16 +50,12 @@ public class BreakCommand extends AbstractCommand {
             Sign s = (Sign) block.getState();
             s.setLine(0, sender.getName());
             s.setLine(1, ChatColor.DARK_RED + "broke a");
-            s.setLine(2, blockName);
+            s.setLine(2, typeString);
             s.setLine(3, ChatColor.DARK_RED + "here.");
             s.update();
-            toSender.output(String.format(
-                    "Has Broken %s block at "
-                    + ChatColor.GREEN + "(%d, %d, %d) %s "
-                    + ChatColor.WHITE + ".",
-                    blockName,
-                    loc.getBlockX(), loc.getBlockY(), loc.getBlockZ(),
-                    loc.getWorld().getName()));
+            sender.sendMessage(String.format(
+                    "Has Broken %s block at " + ChatColor.GREEN + "(%d, %d, %d) %s " + ChatColor.WHITE + ".", typeString,
+                    block.getX(), block.getY(), block.getZ(), loc.getWorld().getName()));
         }
         return true;
     }

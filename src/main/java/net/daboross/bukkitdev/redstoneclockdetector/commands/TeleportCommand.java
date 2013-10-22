@@ -10,15 +10,13 @@ import org.bukkit.entity.Player;
 
 import net.daboross.bukkitdev.redstoneclockdetector.RCDPlugin;
 import net.daboross.bukkitdev.redstoneclockdetector.utils.AbstractCommand;
-import net.daboross.bukkitdev.redstoneclockdetector.utils.IOutput;
-import net.daboross.bukkitdev.redstoneclockdetector.utils.OutputManager;
 import net.daboross.bukkitdev.redstoneclockdetector.utils.UsageException;
 
 public class TeleportCommand extends AbstractCommand {
 
-    public TeleportCommand(String usage, String perm, AbstractCommand[] children, RCDPlugin plugin)
-            throws Exception {
-        super(usage, perm, children);
+    public TeleportCommand(AbstractCommand[] children, RCDPlugin plugin) {
+        super("tp [player] [num]  Teleport player [player] to place of number [num] in list.",
+                "redstoneclockdetector.tp", children);
         this.plugin = plugin;
     }
     protected RCDPlugin plugin;
@@ -28,8 +26,6 @@ public class TeleportCommand extends AbstractCommand {
             throws UsageException {
         Player player = sender instanceof Player ? (Player) sender : null;
         int tpNum = 0;
-        OutputManager outputManager = OutputManager.GetInstance();
-        IOutput toSender = outputManager.toSender(sender);
         if (data.length == 0) {
             if (player == null) {
                 throw new UsageException(this.coloredUsage, "Must specify which player to teleport.");
@@ -39,10 +35,7 @@ public class TeleportCommand extends AbstractCommand {
                 String playerName = data[0].getString();
                 player = this.plugin.getServer().getPlayer(playerName);
                 if (player == null) {
-                    toSender.output(String.format(
-                            "Can not find player "
-                            + ChatColor.GREEN + "%d" + ChatColor.WHITE
-                            + ".", playerName));
+                    sender.sendMessage("Couldn't find player " + ChatColor.GREEN.toString() + playerName + ChatColor.WHITE + ".");
                     return true;
                 }
             } else {
@@ -56,10 +49,7 @@ public class TeleportCommand extends AbstractCommand {
             String playerName = data[0].getString();
             player = this.plugin.getServer().getPlayer(playerName);
             if (player == null) {
-                toSender.output(String.format(
-                        "Can not find player "
-                        + ChatColor.GREEN + "%d" + ChatColor.WHITE
-                        + ".", playerName));
+                sender.sendMessage("Couldn't find player " + ChatColor.GREEN + playerName + ChatColor.WHITE + ".");
                 return true;
             }
             Integer numData = data[1].getInteger();
@@ -70,19 +60,13 @@ public class TeleportCommand extends AbstractCommand {
         }
         List<Entry<Location, Integer>> actList = this.plugin.getRedstoneActivityList();
         if (tpNum >= actList.size()) {
-            toSender.output(String.format(
-                    "Location num "
-                    + ChatColor.YELLOW + "%d " + ChatColor.WHITE
-                    + "dose not exist.", tpNum + 1));
+            sender.sendMessage("Location num " + ChatColor.YELLOW + (tpNum + 1) + ChatColor.WHITE + "does not exist.");
         } else {
             player.teleport(actList.get(tpNum).getKey());
-            IOutput toPlayer = outputManager.prefix(outputManager.toSender(player));
             if (player == sender) {
-                toPlayer.output("Teleporting...");
+                sender.sendMessage("Teleporting...");
             } else {
-                toPlayer.output(String.format(
-                        ChatColor.GREEN.toString() + "%s " + ChatColor.WHITE
-                        + "is teleporting you...", sender.getName()));
+                sender.sendMessage(ChatColor.GREEN.toString() + sender.getName() + ChatColor.WHITE + "is teleporting you...");
             }
         }
         return true;

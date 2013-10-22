@@ -1,16 +1,13 @@
 package net.daboross.bukkitdev.redstoneclockdetector.utils;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+
+@AllArgsConstructor
 public class PermissionsException extends Exception {
 
-    public PermissionsException(String perms) {
-        this.perms = perms;
-    }
-
-    public String getPerms() {
-        return perms;
-    }
-
-    private String perms;
+    @Getter
+    private final String deniedPermission;
 
     private static final long serialVersionUID = 1L;
 }

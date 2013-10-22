@@ -3,13 +3,19 @@ package net.daboross.bukkitdev.redstoneclockdetector.utils;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
 import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 
 public abstract class AbstractCommand {
 
-    public AbstractCommand(String usage, String perm, AbstractCommand[] children) throws Exception {
+    protected String coloredUsage;
+    protected String perm;
+    protected AbstractCommand[] children;
+    protected Token[] tokens;
+
+    public AbstractCommand(String usage, String perm, AbstractCommand[] children) {
         this.perm = perm;
         this.children = children == null ? new AbstractCommand[0] : children;
         this.buildTokens(usage);
@@ -17,17 +23,12 @@ public abstract class AbstractCommand {
 
     public void showUsage(CommandSender sender, String rootCommand) {
         if (sender.hasPermission(this.perm)) {
-            IOutput toSender = OutputManager.GetInstance().toSender(sender);
-            toSender.output(ChatColor.YELLOW.toString() + rootCommand + ChatColor.WHITE + " " + this.coloredUsage);
+            sender.sendMessage(ChatColor.YELLOW + rootCommand + ChatColor.WHITE + " " + this.coloredUsage);
         }
         for (AbstractCommand child : this.children) {
             child.showUsage(sender, rootCommand);
         }
     }
-    protected String coloredUsage;
-    protected String perm;
-    protected AbstractCommand[] children;
-    protected Token[] tokens;
 
     public boolean execute(CommandSender sender, String[] args) throws PermissionsException, UsageException {
         return this.execute(sender, args, new MatchResult[0]);
@@ -76,9 +77,9 @@ public abstract class AbstractCommand {
 
     protected abstract boolean execute(CommandSender sender, MatchResult[] data) throws UsageException;
 
-    private void buildTokens(String usage) throws Exception {
+    private void buildTokens(String usage) {
         int splitPos = usage.indexOf("  ");
-        String tokenDefine = null;
+        String tokenDefine;
         if (splitPos == -1) {
             tokenDefine = usage;
             this.coloredUsage = tokenDefine;
@@ -98,17 +99,21 @@ public abstract class AbstractCommand {
 
         for (AbstractCommand child : children) {
             if (child.tokens.length < this.tokens.length) {
-                throw new Exception("Child command is shorter than parent command.");
+                throw new IllegalArgumentException("Child command is shorter than parent command.");
             }
             for (int i = 0; i < this.tokens.length; ++i) {
                 if (!this.tokens[i].equals(child.tokens[i])) {
-                    throw new Exception("Child command does not have a prefix of parent command.");
+                    throw new IllegalArgumentException("Child command does not have a prefix of parent command.");
                 }
             }
         }
     }
 
+    @EqualsAndHashCode(exclude = {"optional"})
     protected static class Token {
+
+        private final boolean optional;
+        private final String template;
 
         public Token(String template) {
             if (template.length() >= 2) {
@@ -124,7 +129,6 @@ public abstract class AbstractCommand {
             }
             this.template = template;
             this.optional = false;
-
         }
 
         public MatchResult match(String part) {
@@ -138,24 +142,12 @@ public abstract class AbstractCommand {
             }
         }
 
-        public boolean equals(Token token) {
-            if (this.template == null) {
-                return token.template == null;
-            }
-            if (token.template == null) {
-                return false;
-            }
-            return this.template.equalsIgnoreCase(token.template);
-        }
-        private boolean optional;
-        private String template;
     }
 
+    @AllArgsConstructor
     protected static class MatchResult {
 
-        public MatchResult(String data) {
-            this.data = data;
-        }
+        private final String data;
 
         public MatchResult() {
             this.data = null;
@@ -169,10 +161,11 @@ public abstract class AbstractCommand {
             if (this.data == null) {
                 return null;
             }
-            Integer result = null;
+            Integer result;
             try {
                 result = Integer.parseInt(this.data);
-            } catch (Exception e) {
+            } catch (NumberFormatException e) {
+                return null;
             }
             return result;
         }
@@ -181,10 +174,11 @@ public abstract class AbstractCommand {
             if (this.data == null) {
                 return null;
             }
-            Double result = null;
+            Double result;
             try {
                 result = Double.parseDouble(this.data);
-            } catch (Exception e) {
+            } catch (NumberFormatException e) {
+                return null;
             }
             return result;
         }
@@ -192,7 +186,5 @@ public abstract class AbstractCommand {
         public String getString() {
             return this.data;
         }
-        private String data;
     }
-
 }
