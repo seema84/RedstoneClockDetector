@@ -120,6 +120,7 @@ public class RCDPlugin extends JavaPlugin implements CommandExecutor, Listener {
             this.taskId = Integer.MIN_VALUE;
             this.userWhoIssuedLastScan = null;
             this.worker = null;
+            this.sortList();
             this.sortChunkList();
             this.redstoneActivityTable.clear();
             this.redstoneChunkActivityTable.clear();
