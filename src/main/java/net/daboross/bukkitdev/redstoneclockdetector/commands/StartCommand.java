@@ -48,14 +48,15 @@ public class StartCommand extends AbstractCommand {
 
         @Override
         public void onProgress(int secondsRemaining) {
+	    String header = ChatColor.White + "[" + ChatColor.Yellow + "RCD" + ChatColor.White + "] ";
             if (secondsRemaining <= 0) {
                 finishCallback.onFinish();
             } else if (secondsRemaining <= 5) {
-                sender.sendMessage("[RCD]" + secondsRemaining + " seconds remaining.");
+                sender.sendMessage(header + secondsRemaining + " seconds remaining.");
             } else if (secondsRemaining <= 60 && secondsRemaining % 10 == 0) {
-                sender.sendMessage("[RCD]" + secondsRemaining + " seconds remaining.");
+                sender.sendMessage(header + secondsRemaining + " seconds remaining.");
             } else if (secondsRemaining % 60 == 0) {
-                sender.sendMessage("[RCD]" + (secondsRemaining / 60) + " minutes remaining.");
+                sender.sendMessage(header + (secondsRemaining / 60) + " minutes remaining.");
             }
         }
     }
