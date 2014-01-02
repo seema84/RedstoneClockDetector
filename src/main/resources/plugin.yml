@@ -1,5 +1,5 @@
 name: ${project.name}
-main: net.daboross.bukkitdev.redstoneClockDetector.RCDPlugin
+main: net.daboross.bukkitdev.redstoneclockdetector.RCDPlugin
 version: ${project.version}
 
 description: Detect redstone clock and teleport to it.
