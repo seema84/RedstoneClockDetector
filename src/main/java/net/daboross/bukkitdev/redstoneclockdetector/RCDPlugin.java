@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.logging.Level;
+
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import net.daboross.bukkitdev.redstoneclockdetector.commands.BreakCommand;
@@ -19,24 +20,34 @@ import net.daboross.bukkitdev.redstoneclockdetector.commands.TeleportCommand;
 import net.daboross.bukkitdev.redstoneclockdetector.utils.AbstractCommand;
 import net.daboross.bukkitdev.redstoneclockdetector.utils.PermissionsException;
 import net.daboross.bukkitdev.redstoneclockdetector.utils.UsageException;
+
 import org.bukkit.ChatColor;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockState;
+import org.bukkit.block.Dropper;
+import org.bukkit.block.Hopper;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockPhysicsEvent;
+import org.bukkit.event.inventory.InventoryMoveItemEvent;
+import org.bukkit.event.inventory.InventoryType;
+import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class RCDPlugin extends JavaPlugin implements CommandExecutor, Listener {
 
     protected HashMap<Location, Integer> redstoneActivityTable = null;
     protected HashMap<Chunk, Integer> redstoneChunkActivityTable = null;
+    protected HashMap<Chunk, Integer> hopperChunkActivityTable = null;
     protected List<Map.Entry<Location, Integer>> redstoneActivityList = null;
     protected List<Map.Entry<Chunk, Integer>> redstoneChunkActivityList = null;
+    protected List<Map.Entry<Chunk, Integer>> hopperChunkActivityList = null;
     protected Worker worker = null;
     protected CommandSender userWhoIssuedLastScan = null;
     protected int taskId = Integer.MIN_VALUE;
@@ -47,16 +58,20 @@ public class RCDPlugin extends JavaPlugin implements CommandExecutor, Listener {
         this.stop();
         this.redstoneActivityTable = null;
         this.redstoneChunkActivityTable = null;
+        this.hopperChunkActivityTable = null;
         this.redstoneActivityList = null;
         this.redstoneChunkActivityList = null;
+        this.hopperChunkActivityList = null;
     }
 
     @Override
     public void onEnable() {
         this.redstoneActivityTable = new HashMap<Location, Integer>();
         this.redstoneChunkActivityTable = new HashMap<Chunk, Integer>();
+        this.hopperChunkActivityTable = new HashMap<Chunk, Integer>();
         this.redstoneActivityList = new ArrayList<Map.Entry<Location, Integer>>();
         this.redstoneChunkActivityList = new ArrayList<Map.Entry<Chunk, Integer>>();
+        this.hopperChunkActivityList = new ArrayList<Map.Entry<Chunk, Integer>>();
         this.stop();
         if (!setupCommands()) {
             getServer().getPluginManager().disablePlugin(this);
@@ -93,6 +108,10 @@ public class RCDPlugin extends JavaPlugin implements CommandExecutor, Listener {
         return this.redstoneChunkActivityList;
     }
 
+    public List<Map.Entry<Chunk, Integer>> getHopperChunkActivityList() {
+        return this.hopperChunkActivityList;
+    }
+
     public CommandSender getUser() {
         return this.userWhoIssuedLastScan;
     }
@@ -122,8 +141,10 @@ public class RCDPlugin extends JavaPlugin implements CommandExecutor, Listener {
             this.worker = null;
             this.sortList();
             this.sortChunkList();
+            this.sortHopperChunkList();
             this.redstoneActivityTable.clear();
             this.redstoneChunkActivityTable.clear();
+            this.hopperChunkActivityTable.clear();
             return true;
         } else {
             return false;
@@ -146,7 +167,15 @@ public class RCDPlugin extends JavaPlugin implements CommandExecutor, Listener {
         this.redstoneChunkActivityList.addAll(sortedMap.entrySet());
     }
 
-    @EventHandler
+    protected void sortHopperChunkList() {
+        ValueChunkComparator bvc = new ValueChunkComparator(this.hopperChunkActivityTable);
+        TreeMap<Chunk, Integer> sortedMap = new TreeMap<Chunk, Integer>(bvc);
+        sortedMap.putAll(this.hopperChunkActivityTable);
+        this.hopperChunkActivityList.clear();
+        this.hopperChunkActivityList.addAll(sortedMap.entrySet());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBlockRedstoneChange(BlockPhysicsEvent event) {
         if (this.taskId == Integer.MIN_VALUE) {
             return;
@@ -170,6 +199,28 @@ public class RCDPlugin extends JavaPlugin implements CommandExecutor, Listener {
             count += this.redstoneChunkActivityTable.get(loc.getChunk());
         }
         this.redstoneChunkActivityTable.put(loc.getChunk(), count);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onInventoryMoveItem(final InventoryMoveItemEvent event){
+			if (this.taskId == Integer.MIN_VALUE) {
+			    return;
+			}
+            if (event.getSource().getType().equals(InventoryType.HOPPER) || (event.getSource().getType().equals(InventoryType.DROPPER))) {
+                InventoryHolder ih = event.getSource().getHolder();
+                if ((ih instanceof Dropper) || (ih instanceof Hopper)) {
+                	BlockState block = (BlockState) ih;
+                	Location loc = block.getLocation();
+                	if (loc != null) {
+                		int count = 1;
+                        if (this.hopperChunkActivityTable.containsKey(loc.getChunk())) {
+                            count += this.hopperChunkActivityTable.get(loc.getChunk());
+                        }
+                        this.hopperChunkActivityTable.put(loc.getChunk(), count);
+                	}
+                }
+            }
+                    
     }
 
     @Override

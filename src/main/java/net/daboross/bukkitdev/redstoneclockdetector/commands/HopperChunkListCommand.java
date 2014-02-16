@@ -10,13 +10,13 @@ import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.command.CommandSender;
 
-public class ChunkListCommand extends AbstractCommand {
+public class HopperChunkListCommand extends AbstractCommand {
 
     protected RCDPlugin plugin;
     protected final int pageSize = 10;
 
-    public ChunkListCommand(AbstractCommand[] children, RCDPlugin plugin) {
-        super("chunklist [page]  List chunks of redstone activities.", "redstoneclockdetector.list", children);
+    public HopperChunkListCommand(AbstractCommand[] children, RCDPlugin plugin) {
+        super("hopperlist [page]  Chunks with hopper/dropper activity.", "redstoneclockdetector.list", children);
         this.plugin = plugin;
     }
 
@@ -31,7 +31,7 @@ public class ChunkListCommand extends AbstractCommand {
             pageNum = pageData;
         }
         int startIndex = (pageNum - 1) * this.pageSize;
-        List<Entry<Chunk, Integer>> actList = this.plugin.getRedstoneChunkActivityList();
+        List<Entry<Chunk, Integer>> actList = this.plugin.getHopperChunkActivityList();
         int totalPage = actList.isEmpty() ? 0 : (actList.size() - 1) / this.pageSize + 1;
         sender.sendMessage("Page: " + ChatColor.YELLOW + pageNum + ChatColor.WHITE + "/" + ChatColor.GOLD + totalPage);
         if (startIndex >= actList.size()) {
