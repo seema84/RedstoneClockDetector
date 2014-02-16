@@ -84,11 +84,13 @@ public class RCDPlugin extends JavaPlugin implements CommandExecutor, Listener {
         try {
             ListCommand listCommand = new ListCommand(null, this);
             ChunkListCommand chunklistCommand = new ChunkListCommand(null, this);
+            HopperChunkListCommand hopperChunklistCommand = new HopperChunkListCommand(null, this);
             AbstractCommand[] childCommands = new AbstractCommand[]{
                 new StartCommand(null, this, listCommand),
                 new StopCommand(null, this),
                 listCommand,
                 chunklistCommand,
+		hopperChunklistCommand,
                 new TeleportCommand(null, this),
                 new BreakCommand(null, this)};
             this.topCommand = new StatusCommand("  Status of plugin.",
