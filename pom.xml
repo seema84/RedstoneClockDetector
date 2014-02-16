@@ -2,7 +2,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>net.daboross.bukkitdev</groupId>
-    <version>0.2.7-SNAPSHOT</version>
+    <version>0.2.7-b${env.BUILD_NUMBER}</version>
     <artifactId>redstone-clock-detector</artifactId>
     <packaging>jar</packaging>
 
