@@ -12,6 +12,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import net.daboross.bukkitdev.redstoneclockdetector.commands.BreakCommand;
 import net.daboross.bukkitdev.redstoneclockdetector.commands.ChunkListCommand;
+import net.daboross.bukkitdev.redstoneclockdetector.commands.HopperChunkListCommand;
 import net.daboross.bukkitdev.redstoneclockdetector.commands.ListCommand;
 import net.daboross.bukkitdev.redstoneclockdetector.commands.StartCommand;
 import net.daboross.bukkitdev.redstoneclockdetector.commands.StatusCommand;
